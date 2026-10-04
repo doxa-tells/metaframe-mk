@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мастер-класс по генерациям</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: 1920×1080 сцена, масштабируется под экран; чёрные слайды в пиксельной рамке. Мир один — тёмный. */
+@font-face{font-family:"PX";src:url(fonts/ark-pixel-12px.woff2) format("woff2")}
+@font-face{font-family:"TG";src:url(fonts/departure-mono-tenge.woff2) format("woff2");unicode-range:U+20B8}
+@font-face{font-family:"JB";src:url(fonts/jetbrains-mono-cyrillic-400-normal.woff2) format("woff2");font-weight:400;unicode-range:U+0400-04FF,U+20B8}
+@font-face{font-family:"JB";src:url(fonts/jetbrains-mono-latin-400-normal.woff2) format("woff2");font-weight:400;unicode-range:U+0000-00FF,U+2000-206F,U+2190-21FF}
+@font-face{font-family:"JB";src:url(fonts/jetbrains-mono-cyrillic-700-normal.woff2) format("woff2");font-weight:700;unicode-range:U+0400-04FF,U+20B8}
+@font-face{font-family:"JB";src:url(fonts/jetbrains-mono-latin-700-normal.woff2) format("woff2");font-weight:700;unicode-range:U+0000-00FF,U+2000-206F,U+2190-21FF}
+
+:root{
+  --ink:#0a0a0c;      /* фон слайда */
+  --paper:#f4f2f7;    /* текст */
+  --mag:#e35ee0;      /* маджента — главный акцент */
+  --cyan:#3fe3e6;
+  --yel:#e8d44c;
+  --org:#f0581f;
+  --vio:#6a49ee;      /* рамка вокруг сцены */
+  --vio2:#4f33d6;
+  --dim:#8a8796;
+  --line:#2a2833;
+  --f-px:"PX","TG",ui-monospace,monospace;
+  --f-p2:"PX","TG",ui-monospace,monospace;
+  --bold:calc(1em/12) 0 0 currentColor,calc(.5em/12) 0 0 currentColor;
+  --f-mono:"JB","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--vio);color:var(--paper);font-family:var(--f-mono);overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* пиксельная рамка-фон */
+#frame{position:fixed;inset:0;background:linear-gradient(160deg,var(--vio) 0%,var(--vio2) 100%)}
+#frame canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+
+.stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform:translate(-50%,-50%) scale(var(--k,.5));transform-origin:50% 50%;background:var(--ink);overflow:hidden;box-shadow:0 0 0 6px var(--ink),18px 18px 0 6px rgba(10,10,12,.35)}
+.slide{position:absolute;inset:0;display:none;overflow:hidden}
+.slide.on{display:block}
+
+/* ---------- типографика ---------- */
+.px{font-family:var(--f-px);font-weight:400;text-transform:uppercase;line-height:1;letter-spacing:calc(1em/12);text-shadow:var(--bold);margin:0}
+.p2{font-family:var(--f-p2);text-transform:uppercase;letter-spacing:.06em;line-height:1.2}
+.mono{font-family:var(--f-mono)}
+.c-mag{color:var(--mag)}.c-cyan{color:var(--cyan)}.c-yel{color:var(--yel)}.c-org{color:var(--org)}.c-dim{color:var(--dim)}
+.hl{display:inline-block;background:var(--mag);color:var(--ink);padding:.04em .08em 0 .14em;line-height:1}
+.hl.cyan{background:var(--cyan)}.hl.yel{background:var(--yel)}.hl.org{background:var(--org)}
+
+/* метка в углу (как клубный логотип в референсе) */
+.mark{position:absolute;right:56px;top:44px;text-align:right;z-index:6}
+.mark b{display:block;font-family:var(--f-px);font-weight:400;font-size:36px;line-height:1;color:var(--mag);letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.mark i{display:inline-block;margin-top:6px;font-style:normal;font-family:var(--f-p2);font-size:24px;line-height:1;background:var(--mag);color:var(--ink);padding:4px 8px 2px}
+.num{position:absolute;left:56px;bottom:36px;font-family:var(--f-p2);font-size:24px;color:var(--dim);z-index:6}
+.num b{color:var(--paper);font-weight:400}
+
+/* ---------- блоки ---------- */
+.tag{position:absolute;border:3px solid var(--paper);padding:16px 22px 16px;background:var(--ink)}
+.tag h3{font-family:var(--f-px);font-weight:400;font-size:48px;line-height:1;margin:0;text-transform:lowercase;letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.tag p{margin:10px 0 0;font-size:21px;line-height:1.35;color:var(--paper);max-width:28ch}
+.tag .n{position:absolute;width:52px;height:52px;display:grid;place-items:center;font-family:var(--f-px);font-weight:400;font-size:36px;line-height:1;text-shadow:var(--bold);border:3px solid currentColor;background:var(--ink)}
+.tag.mag{border-color:var(--mag)}.tag.mag h3,.tag.mag .n{color:var(--mag)}
+.tag.cyan{border-color:var(--cyan)}.tag.cyan h3,.tag.cyan .n{color:var(--cyan)}
+.tag.yel{border-color:var(--yel)}.tag.yel h3,.tag.yel .n{color:var(--yel)}
+.tag.org{border-color:var(--org)}.tag.org h3,.tag.org .n{color:var(--org)}
+
+.label{display:inline-block;font-family:var(--f-p2);font-size:24px;line-height:1;letter-spacing:.06em;padding:6px 12px 4px;background:var(--paper);color:var(--ink);text-transform:uppercase}
+.label.mag{background:var(--mag)}.label.cyan{background:var(--cyan)}.label.yel{background:var(--yel)}.label.org{background:var(--org)}
+
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{font-family:var(--f-mono);font-weight:700;font-size:22px;padding:8px 14px;border:2px solid var(--line);color:var(--paper);background:#121117}
+.client{position:absolute;top:600px}
+.roles{position:absolute;left:620px;top:350px;width:1244px;display:grid;grid-template-columns:repeat(4,1fr);gap:28px;align-items:stretch}
+.roles .tag{position:relative;left:auto;top:auto;padding:14px 18px 16px}
+.roles .tag h3{font-size:36px}
+.roles .tag p{font-size:19px;max-width:none}
+.roles .tag .n{left:-26px;top:-26px;width:44px;height:44px;font-size:30px}
+.client-h{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--line);padding-bottom:12px;margin-bottom:18px}
+.client-h b{font-family:var(--f-px);font-weight:400;font-size:48px;line-height:1;text-shadow:var(--bold);letter-spacing:calc(1em/12)}
+.client .chips{gap:10px}.client .chip{font-size:22px;padding:8px 14px}
+
+/* полосы-проценты как в референсе */
+.bar{position:relative;height:74px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 6px;color:var(--ink)}
+.bar small{position:absolute;left:10px;top:6px;font-size:16px;font-family:var(--f-mono)}
+.bar strong{font-family:var(--f-px);font-weight:400;font-size:60px;line-height:1;letter-spacing:calc(1em/12);text-shadow:var(--bold);margin-left:auto}
+.bar.mag{background:var(--mag)}.bar.cyan{background:var(--cyan)}.bar.yel{background:var(--yel)}.bar.org{background:var(--org)}
+
+/* фото с пиксельным рассыпанием */
+.pix{position:absolute;overflow:visible}
+.pix>img{display:block;width:100%;height:100%;object-fit:cover}
+.pix>canvas{position:absolute;pointer-events:none;image-rendering:pixelated}
+
+/* логотипы-плитки */
+.tile{position:absolute;overflow:hidden;border:4px solid var(--paper);background:#000}
+.tile img{width:100%;height:100%;object-fit:cover;transform:scale(1.06)}
+.tile.cap::after{content:attr(data-cap);position:absolute;left:-4px;bottom:-4px;font-family:var(--f-p2);font-size:24px;line-height:1;background:var(--paper);color:var(--ink);padding:6px 10px 4px}
+
+/* ---------- геометрия ---------- */
+.g{position:absolute;width:120px;height:120px}
+.g.sq{background:currentColor}
+.g.tl{background:currentColor;clip-path:polygon(0 0,100% 0,0 100%)}
+.g.br{background:currentColor;clip-path:polygon(100% 0,100% 100%,0 100%)}
+.g.tr{background:currentColor;clip-path:polygon(0 0,100% 0,100% 100%)}
+.g.bl{background:currentColor;clip-path:polygon(0 0,0 100%,100% 100%)}
+.g.q1{background:currentColor;border-radius:0 0 0 100%}
+.g.q2{background:currentColor;border-radius:0 0 100% 0}
+.g.q3{background:currentColor;border-radius:100% 0 0 0}
+.g.q4{background:currentColor;border-radius:0 100% 0 0}
+.g.ring{border:22px solid currentColor;border-radius:50%;clip-path:polygon(0 0,100% 0,100% 50%,50% 50%,50% 100%,0 100%)}
+.g.chk{background:repeating-conic-gradient(currentColor 0 25%,transparent 0 50%) 0 0/40px 40px}
+.g.dia{background:repeating-conic-gradient(from 45deg,currentColor 0 25%,transparent 0 50%) 0 0/34px 34px}
+.g.stairs{background:linear-gradient(currentColor,currentColor) 0 0/33.4% 100% no-repeat,linear-gradient(currentColor,currentColor) 50% 100%/33.4% 66.7% no-repeat,linear-gradient(currentColor,currentColor) 100% 100%/33.4% 33.4% no-repeat}
+.g.spark{width:96px;height:96px;border:3px solid var(--paper);background:var(--ink)}
+.g.spark::before{content:"";position:absolute;inset:18px;background:var(--paper);clip-path:polygon(50% 0,58% 42%,100% 50%,58% 58%,50% 100%,42% 58%,0 50%,42% 42%)}
+.g.chev{background:repeating-linear-gradient(135deg,currentColor 0 14px,transparent 14px 30px);clip-path:polygon(0 0,100% 50%,0 100%)}
+.g.flower{background:radial-gradient(circle at 0 0,currentColor 49.5%,transparent 50%) 0 0/50% 50% no-repeat,radial-gradient(circle at 100% 0,currentColor 49.5%,transparent 50%) 100% 0/50% 50% no-repeat,radial-gradient(circle at 0 100%,currentColor 49.5%,transparent 50%) 0 100%/50% 50% no-repeat,radial-gradient(circle at 100% 100%,currentColor 49.5%,transparent 50%) 100% 100%/50% 50% no-repeat}
+.w{color:var(--paper)}.m{color:var(--mag)}.cy{color:var(--cyan)}.y{color:var(--yel)}.o{color:var(--org)}.k{color:#1c1b22}
+
+/* ---------- анимация входа: ступенчатая, «пиксельная» ---------- */
+.slide.on .in{animation:pop .42s steps(5,end) both;animation-delay:calc(var(--d,0) * 70ms)}
+@keyframes pop{from{opacity:0;clip-path:inset(-60% 100% -60% -60%)}to{opacity:1;clip-path:inset(-60% -60% -60% -60%)}}
+@media (prefers-reduced-motion:reduce){.slide.on .in{animation:none}}
+
+/* ---------- навигация ---------- */
+.hud{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:20;opacity:0;transition:opacity .25s}
+body:hover .hud,.hud:focus-within{opacity:1}
+.hud button{font-family:var(--f-p2);font-size:16px;background:var(--ink);color:var(--paper);border:2px solid var(--paper);padding:10px 12px 8px;cursor:pointer}
+.hud button:hover{background:var(--mag);color:var(--ink);border-color:var(--mag)}
+.hud button:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
+.progress{position:fixed;left:0;right:0;top:0;height:6px;display:flex;gap:3px;padding:0 3px;z-index:20}
+.progress span{flex:1;background:rgba(10,10,12,.35)}
+.progress span.done{background:var(--ink)}
+.progress span.cur{background:var(--mag)}
+body.fs #frame{background:var(--ink)}
+body.fs .stage{box-shadow:none}
+
+
+/* попытка: было / стало */
+.try{position:absolute;display:flex;flex-direction:column;gap:22px;align-items:flex-start}
+.try p{margin:0;font-size:26px;line-height:1.4;max-width:34ch}
+.try .one{width:300px;height:300px;background:var(--org);display:grid;place-items:center}
+.try .one b{font-family:var(--f-px);font-weight:400;font-size:180px;line-height:1;color:var(--ink);text-shadow:var(--bold)}
+.try .many{display:grid;grid-template-columns:repeat(8,1fr);gap:12px;width:100%;height:300px}
+.try .many i{background:#1d1c24;border:3px solid var(--cyan)}
+.try .many i.win{background:var(--mag);border-color:var(--mag)}
+/* качество + количество */
+.eq{position:absolute;left:150px;top:276px;display:flex;gap:40px}
+.eq .op{font-family:var(--f-px);font-size:48px;line-height:1;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold);text-decoration:line-through;text-decoration-thickness:6px;text-decoration-color:var(--org)}
+.feed{display:flex;align-items:flex-end;gap:12px;height:380px;border-bottom:4px solid var(--paper);padding:0 6px}
+.feed i{flex:1;height:calc(var(--h) * 1%);background:repeating-linear-gradient(0deg,var(--mag) 0 18px,transparent 18px 24px)}
+.feed i:nth-child(odd){background:repeating-linear-gradient(0deg,var(--cyan) 0 18px,transparent 18px 24px)}
+.earn{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.earn li{display:flex;flex-direction:column;gap:2px;padding:6px 0 6px 22px;border-bottom:2px solid var(--line);position:relative}
+.earn li::before{content:"";position:absolute;left:0;top:13px;width:10px;height:10px;background:var(--paper)}
+.earn.cyan li::before{background:var(--cyan)}.earn.mag li::before{background:var(--mag)}.earn.yel li::before{background:var(--yel)}
+.earn b{font-size:22px;line-height:1.15}
+.earn span{font-size:16px;line-height:1.25;color:var(--dim)}
+/* курс */
+.mods{position:absolute;left:96px;top:260px;width:1728px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.mod{border:3px solid var(--line);padding:22px 24px 26px;background:#0f0e14}
+.mod h3{font-family:var(--f-px);font-weight:400;font-size:36px;line-height:1;margin:18px 0 18px;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.mod ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.mod li{font-size:21px;line-height:1.3;padding-left:22px;position:relative}
+.mod li::before{content:"";position:absolute;left:0;top:10px;width:9px;height:9px;background:currentColor}
+.mod.cyan{border-color:var(--cyan)}.mod.cyan h3,.mod.cyan li::before{color:var(--cyan)}
+.mod.mag{border-color:var(--mag)}.mod.mag h3,.mod.mag li::before{color:var(--mag)}
+.mod.yel{border-color:var(--yel)}.mod.yel h3,.mod.yel li::before{color:var(--yel)}
+.mod.org{border-color:var(--org)}.mod.org h3,.mod.org li::before{color:var(--org)}
+.mod li{color:var(--paper)}
+.have{position:absolute;left:150px;top:310px;width:960px;list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.have li{display:flex;flex-direction:column;gap:10px;padding:20px 0 20px 64px;border-bottom:2px solid var(--line);position:relative}
+.have li::before{content:"";position:absolute;left:0;top:22px;width:36px;height:36px;background:var(--cyan);clip-path:polygon(0 50%,14% 36%,40% 62%,86% 16%,100% 30%,40% 90%)}
+.have b{font-family:var(--f-px);font-weight:400;font-size:44px;line-height:1;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.have span{font-size:22px;color:var(--dim)}
+.have .chips{gap:8px}.have .chip{font-size:19px;padding:5px 12px;color:var(--paper)}
+.prize{position:absolute;left:1220px;top:300px;width:600px;border:4px solid var(--mag);padding:28px 32px 32px;background:#120c14}
+.prize p{font-size:24px;line-height:1.45;margin:22px 0 0}
+.browser{position:absolute;left:1000px;top:140px;width:820px;border:4px solid var(--paper);background:#0f0e14}
+.b-top{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:4px solid var(--paper)}
+.b-top i{width:16px;height:16px;background:var(--paper)}
+.b-top i:nth-child(1){background:var(--org)}.b-top i:nth-child(2){background:var(--yel)}.b-top i:nth-child(3){background:var(--cyan)}
+.b-top span{font-family:var(--f-px);font-size:24px;margin-left:12px;color:var(--dim)}
+.b-body{position:relative;height:500px;overflow:hidden;padding:44px}
+.b-hero{display:flex;flex-direction:column;gap:18px;position:relative;z-index:2}
+.b-t1{width:420px;height:44px;background:var(--paper)}
+.b-t2{width:300px;height:44px;background:var(--yel)}
+.b-btn{width:180px;height:52px;background:var(--mag);margin-top:12px;animation:pulse 1.6s steps(2) infinite}
+.b-shapes i{position:absolute;width:96px;height:96px}
+.b-shapes .s1{right:80px;top:40px;background:var(--cyan);animation:hop 2.4s steps(6) infinite}
+.b-shapes .s2{right:200px;top:150px;background:var(--mag);border-radius:0 0 100% 0;animation:spin 4s steps(8) infinite}
+.b-shapes .s3{right:60px;top:200px;background:repeating-conic-gradient(var(--yel) 0 25%,transparent 0 50%) 0 0/32px 32px;animation:hop 3s steps(6) infinite reverse}
+.b-shapes .s4{right:300px;top:30px;width:60px;height:60px;background:var(--org);clip-path:polygon(0 0,100% 0,0 100%);animation:spin 3s steps(4) infinite reverse}
+.b-cards{position:absolute;left:44px;right:44px;bottom:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.b-cards i{height:130px;border:3px solid var(--line);background:linear-gradient(var(--line),var(--line)) 16px 16px/50% 14px no-repeat,linear-gradient(#2a2833,#2a2833) 16px 44px/70% 10px no-repeat;animation:rise 3.6s steps(6) infinite}
+.b-cards i:nth-child(2){animation-delay:.4s}.b-cards i:nth-child(3){animation-delay:.8s}
+.b-code{margin:0;border-top:4px solid var(--paper);padding:18px 22px;font-family:var(--f-mono);font-size:22px;line-height:1.5;color:var(--paper);white-space:pre-wrap}
+.cursor{animation:pulse 1s steps(2) infinite;color:var(--yel)}
+@keyframes hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-40px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{opacity:.25}}
+@keyframes rise{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@media (prefers-reduced-motion:reduce){.browser *{animation:none!important}}
+.ways{position:absolute;left:1300px;top:170px;width:520px;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.ways i{aspect-ratio:1;border:3px solid var(--line);background:#121117}
+.ways i:nth-child(3n){border-color:var(--cyan)}.ways i:nth-child(4n){border-color:var(--yel)}
+.ways i.me{background:var(--mag);border-color:var(--mag);animation:pulse 1.4s steps(2) infinite}
+.plans{position:absolute;left:96px;top:260px;width:1728px;display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:28px;align-items:stretch}
+.plan{border:4px solid var(--line);padding:26px 30px 30px;background:#0f0e14;display:flex;flex-direction:column;gap:18px;align-items:flex-start}
+.plan h3{font-family:var(--f-px);font-weight:400;font-size:42px;line-height:1.05;margin:4px 0 0;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.plan .price{font-family:var(--f-px);font-size:84px;line-height:1;letter-spacing:calc(1em/12);text-shadow:var(--bold);margin-top:auto}
+.plan .price small{font-size:.6em;margin-left:10px}
+.plan ul{list-style:none;margin:0;padding:18px 0 0;border-top:3px solid var(--line);width:100%;display:flex;flex-direction:column;gap:12px}
+.plan li{font-size:22px;line-height:1.3;padding-left:26px;position:relative}
+.plan li::before{content:"";position:absolute;left:0;top:8px;width:12px;height:12px;background:currentColor}
+.plan.cyan{border-color:var(--cyan)}.plan.cyan h3,.plan.cyan .price,.plan.cyan li::before{color:var(--cyan)}
+.plan.yel{border-color:var(--yel)}.plan.yel h3,.plan.yel .price,.plan.yel li::before{color:var(--yel)}
+.plan.mag{border-color:var(--mag)}.plan.mag h3,.plan.mag .price,.plan.mag li::before{color:var(--mag)}
+.plan li{color:var(--paper)}
+.plan.hot{background:var(--mag);color:var(--ink);box-shadow:14px 14px 0 var(--paper)}
+.plan.hot h3,.plan.hot .price,.plan.hot li,.plan.hot li::before{color:var(--ink)}
+.plan.hot .label{background:var(--ink);color:var(--mag)}
+.plan.hot ul{border-top-color:rgba(10,10,12,.35)}
+/* воронка */
+.fit{position:absolute;left:300px;top:250px;width:1520px;display:grid;grid-template-columns:1.3fr 1fr;gap:48px}
+.fit-col ul{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column}
+.fit-col li{font-size:28px;line-height:1.3;padding:18px 0 18px 54px;border-bottom:2px solid var(--line);position:relative}
+.fit-col.yes li::before{content:"";position:absolute;left:0;top:20px;width:30px;height:30px;background:var(--cyan);clip-path:polygon(0 50%,14% 36%,40% 62%,86% 16%,100% 30%,40% 90%)}
+.fit-col.no li{color:var(--dim)}
+.fit-col.no li::before{content:"";position:absolute;left:2px;top:22px;width:26px;height:26px;background:var(--org);clip-path:polygon(15% 0,50% 35%,85% 0,100% 15%,65% 50%,100% 85%,85% 100%,50% 65%,15% 100%,0 85%,35% 50%,0 15%)}
+.cases{position:absolute;left:96px;top:260px;width:1728px;display:grid;grid-template-columns:repeat(5,1fr);gap:20px}
+.case{border:3px solid var(--line);background:#0f0e14;padding:24px 22px 28px;display:flex;flex-direction:column;gap:24px;min-height:600px}
+.case-top{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.case-top b{display:block;font-family:var(--f-px);font-weight:400;font-size:36px;line-height:1;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.case-top small{display:block;font-size:18px;color:var(--dim);margin-top:6px;line-height:1.3}
+.ava{flex:none;width:64px;height:64px;display:grid;place-items:center;font-family:var(--f-px);font-size:44px;line-height:1;color:var(--ink);text-shadow:var(--bold)}
+.case-res{font-family:var(--f-px);font-size:40px;line-height:1.05;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold);min-height:2.1em;display:flex;align-items:flex-end}
+.case p{margin:0;font-size:22px;line-height:1.4;padding-top:16px;border-top:2px solid var(--line)}
+.case.cyan{border-color:var(--cyan)}.case.cyan .ava{background:var(--cyan)}.case.cyan .case-res{color:var(--cyan)}
+.case.mag{border-color:var(--mag)}.case.mag .ava{background:var(--mag)}.case.mag .case-res{color:var(--mag)}
+.case.yel{border-color:var(--yel)}.case.yel .ava{background:var(--yel)}.case.yel .case-res{color:var(--yel)}
+.case.org{border-color:var(--org)}.case.org .ava{background:var(--org)}.case.org .case-res{color:var(--org)}
+.case.mag{background:#170d17}
+.pay{position:absolute;left:150px;top:430px;width:1620px;display:grid;grid-template-columns:1fr auto 1fr;gap:60px;align-items:end}
+.pay-opt{display:flex;flex-direction:column;gap:16px}
+.pay-opt b{font-size:84px;line-height:1;letter-spacing:calc(1em/12);text-shadow:var(--bold);text-transform:uppercase;font-weight:400}
+.pay-opt span{font-size:28px;color:var(--dim)}
+.pay-blocks{display:flex;gap:16px;height:200px;align-items:flex-end}
+.pay-blocks i{flex:1;height:100%;border:4px solid var(--cyan);background:repeating-linear-gradient(0deg,rgba(63,227,230,.18) 0 12px,transparent 12px 24px)}
+.pay-blocks i:nth-child(5){border-style:dashed;background:none}
+.pay-site{height:200px;border:4px solid var(--yel);padding:18px;display:flex;flex-direction:column;gap:12px;background:#14130c}
+.pay-site i{display:block;height:28px;background:var(--yel)}
+.pay-site i:nth-child(2){width:60%;background:var(--paper)}
+.pay-site i:nth-child(3){width:30%;height:44px;background:var(--mag);margin-top:auto}
+.pay-or{font-size:60px;color:var(--dim);padding-bottom:110px;text-transform:uppercase}
+.obj{position:absolute;left:96px;top:260px;width:1080px;list-style:none;margin:0;padding:0}
+.obj li{display:grid;grid-template-columns:400px 1fr;gap:28px;padding:20px 0;border-bottom:2px solid var(--line);align-items:baseline}
+.obj b{font-family:var(--f-px);font-weight:400;font-size:36px;line-height:1.05;color:var(--org);letter-spacing:calc(1em/12);text-shadow:var(--bold)}
+.obj span{font-size:23px;line-height:1.4}
+.guar{position:absolute;left:1260px;top:270px;width:560px;background:var(--cyan);color:var(--ink);padding:30px 32px 34px;display:flex;flex-direction:column;gap:22px;box-shadow:14px 14px 0 var(--paper)}
+.guar .label{background:var(--ink);color:var(--cyan);align-self:flex-start}
+.guar b{font-size:56px;line-height:1.05;text-transform:uppercase;letter-spacing:calc(1em/12);text-shadow:var(--bold);font-weight:400}
+.guar span{font-size:26px;line-height:1.4}
+.steps{margin-top:60px;display:flex;flex-direction:column;gap:22px}
+.steps div{display:flex;align-items:center;gap:22px;font-size:30px}
+.steps .n{flex:none;width:56px;height:56px;display:grid;place-items:center;border:3px solid var(--mag);color:var(--mag);font-family:var(--f-px);font-size:36px;text-shadow:var(--bold)}
+.qr{position:absolute;left:1320px;top:240px;width:460px;height:460px;padding:0;display:flex;flex-direction:column;gap:20px;align-items:flex-start}
+.qr svg{width:460px;height:460px;display:block;box-shadow:14px 14px 0 var(--mag)}
+.plan .badge{position:absolute;top:-22px;right:20px;font-family:var(--f-px);font-size:24px;line-height:1;background:var(--paper);color:var(--ink);padding:8px 12px 6px;text-transform:uppercase;letter-spacing:.06em}
+.plan{position:relative}
+.plan .inst{font-size:22px;margin-top:-6px;color:var(--paper)}
+.plan.hot .inst{color:var(--ink)}
+/* сравнение до/после */
+.ba{position:absolute;overflow:hidden;cursor:ew-resize;touch-action:none}
+.ba img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none}
+.ba .after{clip-path:inset(0 0 0 var(--x,50%))}
+.ba .knob{position:absolute;top:0;bottom:0;left:var(--x,50%);width:6px;margin-left:-3px;background:var(--paper)}
+.ba .knob::after{content:"◀ ▶";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--f-p2);font-size:24px;line-height:1;white-space:nowrap;background:var(--paper);color:var(--ink);padding:14px 12px 12px}
+.ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.ba .lab{position:absolute;top:20px}
+</style>
+</head>
+<body>
+<div id="frame"><canvas id="bgpix"></canvas></div>
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<main class="stage" id="stage" aria-live="polite">
+
+<!-- 01 ОБЛОЖКА -->
+<section class="slide" data-title="Обложка">
+  <div style="position:absolute;left:0;top:0;width:820px;height:1080px;background:var(--mag)"></div>
+  <div class="pix in" data-edge="right" data-cell="56" data-seed="3" style="left:120px;top:110px;width:640px;height:860px"><img src="img/ai-shot.jpg" alt="AI-кадр: девушка-пилот в шлеме"></div>
+  <div class="g tl w" style="left:0;top:0"></div><div class="g q2 w" style="left:120px;top:0"></div><div class="g chk k" style="left:0;top:120px"></div>
+  <div class="g br w" style="left:0;top:840px"></div><div class="g stairs w" style="left:0;top:960px"></div><div class="g tr k" style="left:120px;top:960px"></div>
+  <div class="g spark" style="left:690px;top:640px"></div>
+  <div class="g chk w" style="left:1560px;top:860px;opacity:.12;width:240px;height:160px"></div>
+  <div class="g q3 m" style="left:1800px;top:960px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+
+  <h1 class="px in" style="--d:2;position:absolute;left:900px;top:190px;font-size:180px;color:var(--paper)">Мастер-<br>класс</h1>
+  <div class="in" style="--d:4;position:absolute;left:906px;top:560px;width:430px;border:3px solid var(--paper);padding:18px 20px;font-size:23px;line-height:1.35">по генерациям:<br>AI-видео, промпты,<br>звук и цвет</div>
+  <div class="px in" style="--d:5;position:absolute;left:1360px;top:560px;width:150px;height:150px;background:var(--paper);color:var(--ink);font-size:120px;display:grid;place-items:center;line-height:1">к</div>
+  <div class="px in" style="--d:6;position:absolute;left:900px;top:760px;font-size:132px;color:var(--mag)">500 000 ₸/м</div>
+  <div class="p2 in c-dim" style="--d:7;position:absolute;left:906px;top:912px;font-size:24px">первый шаг · на AI-контенте</div>
+</section>
+
+<!-- 02 КТО Я -->
+<section class="slide" data-title="Кто я">
+  <div class="g flower o" style="left:0;top:0;width:96px;height:96px"></div>
+  <div class="g chev cy" style="left:1770px;top:150px;width:110px;height:110px"></div>
+  <div class="pix in" data-edge="bottom" data-cell="32" data-seed="7" style="left:96px;top:96px;width:400px;height:448px"><img src="img/darkhan.jpg" alt="Дархан" style="filter:grayscale(1) contrast(1.08);object-position:50% 20%"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+
+  <span class="label mag in" style="position:absolute;left:600px;top:100px">кто я?</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:596px;top:146px;font-size:144px">Дархан</h2>
+
+  <div class="roles in" style="--d:2">
+    <div class="tag cyan"><span class="n">1</span><h3>основатель</h3><p>Meta Frame</p></div>
+    <div class="tag mag"><span class="n">2</span><h3 style="text-transform:none">CEO</h3><p>Caster UGC · <b class="c-mag">$3,3 млн</b></p></div>
+    <div class="tag yel"><span class="n">3</span><h3 style="text-transform:none">Higgsfield</h3><p>ex. generative specialist · оценка <b class="c-yel">$5B+</b></p></div>
+    <div class="tag w"><span class="n">4</span><h3>советник</h3><p>при МВД</p></div>
+  </div>
+
+  <div class="client in" style="--d:6;left:96px;width:560px">
+    <div class="client-h"><span class="label cyan">бренды</span><b class="c-cyan">12</b></div>
+    <div class="chips"><span class="chip">Salem Ent.</span><span class="chip">Unico Play</span><span class="chip">Galmart</span><span class="chip">Hyundai</span><span class="chip">Porsche</span><span class="chip">BI Group</span><span class="chip">Mercedes-Benz</span><span class="chip">Kaspi Bank</span><span class="chip">Sensata</span><span class="chip">MyCar</span><span class="chip">Geely</span><span class="chip">Zebra Coffee</span></div>
+  </div>
+  <div class="client in" style="--d:7;left:700px;width:520px">
+    <div class="client-h"><span class="label mag">личности</span><b class="c-mag">10</b></div>
+    <div class="chips"><span class="chip">Нурлан Сабуров</span><span class="chip">Данияр Ашимов</span><span class="chip">Санжар Токтыбаев</span><span class="chip">Айдын Рахимбаев</span><span class="chip">Айтым Жакупов</span><span class="chip">Truwer</span><span class="chip">Niman</span><span class="chip">Lucaveros</span><span class="chip">Бустер</span><span class="chip">Virtus Pro</span></div>
+  </div>
+  <div class="client in" style="--d:8;left:1264px;width:600px">
+    <div class="client-h"><span class="label yel">квази / гос</span><b class="c-yel">12</b></div>
+    <div class="chips"><span class="chip">ХК «Барыс»</span><span class="chip">Все казахстанские телеканалы</span><span class="chip">МВД</span><span class="chip">МП ИИ</span><span class="chip">МЧС</span><span class="chip">УСБ</span><span class="chip">УПН</span><span class="chip">КПН</span><span class="chip">Полиция на транспорте</span><span class="chip">Астана ФК</span><span class="chip">КФФ</span><span class="chip">Мин. культуры</span></div>
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 03 ЧТО ТАКОЕ AI-ВИДЕО -->
+<section class="slide" data-title="Что такое AI-видео">
+  <div class="g tl m" style="left:0;top:0"></div><div class="g chk m" style="left:120px;top:0"></div><div class="g br w" style="left:0;top:120px"></div>
+  <div class="g stairs o" style="left:1800px;top:960px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <h2 class="px in" style="position:absolute;left:300px;top:70px;font-size:108px">что такое <span class="c-cyan">AI-видео</span></h2>
+
+  <div class="pix in" data-edge="left" data-cell="44" data-seed="11" style="--d:2;left:150px;top:260px;width:760px;height:560px"><img src="img/shoot.jpg" alt="Классическая съёмка с камерой и ассистентом"></div>
+  <div class="pix in" data-edge="right" data-cell="44" data-seed="12" style="--d:3;left:1010px;top:260px;width:760px;height:560px"><img src="img/ai-shot.jpg" alt="Кадр, сгенерированный нейросетью"></div>
+
+  <div class="in" style="--d:4;position:absolute;left:150px;top:850px;width:760px">
+    <div class="bar org"><small>съёмка + продакшн</small><strong>2 недели</strong></div>
+  </div>
+  <div class="in" style="--d:5;position:absolute;left:1010px;top:850px;width:760px;display:flex;align-items:flex-end;gap:18px">
+    <div class="bar cyan" style="width:40px;padding:0"></div>
+    <div><div class="mono" style="font-size:16px;color:var(--cyan)">AI-генерация</div><div class="px c-cyan" style="font-size:48px">2 часа</div></div>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 3a ПОПЫТКА -->
+<section class="slide" data-title="ИИ удешевил попытку">
+  <div class="g tl o" style="left:0;top:0"></div><div class="g sq w" style="left:120px;top:0;width:60px;height:60px"></div>
+  <div class="g chk cy" style="left:1800px;top:960px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:300px;top:96px">главная мысль</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:296px;top:150px;font-size:96px;line-height:1.1">ИИ удешевил не видео,<br>а <span class="hl cyan">попытку</span></h2>
+
+  <div class="try in" style="--d:3;left:150px;top:470px;width:700px">
+    <span class="label org">было</span>
+    <div class="one"><b>1</b></div>
+    <p><b class="c-org">1 идея → 1 ролик.</b> Съёмка, команда, локация. Если не зашло, потерян весь бюджет.</p>
+  </div>
+  <div class="try in" style="--d:4;left:960px;top:470px;width:820px">
+    <span class="label cyan">стало</span>
+    <div class="many"><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="win"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="win"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="win"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></div>
+    <p><b class="c-cyan">24 версии → тест → в работу лучшие 3.</b> Ошибиться стоит пару часов и подписку.</p>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 3b ЧТО ЭТО ДАЁТ + РЫНОК -->
+<section class="slide" data-title="Рынок уже здесь">
+  <div class="g flower y" style="left:0;top:0"></div><div class="g q2 m" style="left:120px;top:0"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label yel in" style="position:absolute;left:300px;top:96px">что это даёт</span>
+  <div class="in" style="--d:1;position:absolute;left:300px;top:160px;width:1520px;display:grid;grid-template-columns:repeat(3,1fr);gap:40px">
+    <div class="tag yel" style="position:relative;left:auto;top:auto"><span class="n" style="left:-26px;top:-26px">1</span><h3 style="font-size:36px">тестировать гипотезы</h3><p>проверяешь идею на аудитории до того, как вкладываться в продакшн</p></div>
+    <div class="tag cyan" style="position:relative;left:auto;top:auto"><span class="n" style="left:-26px;top:-26px">2</span><h3 style="font-size:36px">версии под каждого</h3><p>свой креатив под каждую аудиторию, площадку и формат</p></div>
+    <div class="tag mag" style="position:relative;left:auto;top:auto"><span class="n" style="left:-26px;top:-26px">3</span><h3 style="font-size:36px">показать до съёмки</h3><p>клиент видит ролик, а не раскадровку, и решение принимается быстрее</p></div>
+  </div>
+
+  <div class="in" style="--d:3;position:absolute;left:150px;top:520px;width:1620px;border-top:3px solid var(--line);padding-top:40px;display:grid;grid-template-columns:1.25fr 1fr;gap:70px;align-items:start">
+    <div>
+      <div class="px c-yel" style="font-size:240px;line-height:.9">78%</div>
+      <p style="font-size:28px;line-height:1.35;margin:18px 0 0">глобальных брендов уже используют AI-контент в рекламе</p>
+      <p class="p2 c-dim" style="font-size:24px;margin:14px 0 0">World Federation of Advertisers · апрель 2026</p>
+    </div>
+    <div style="padding-top:20px">
+      <div class="px" style="font-size:120px;line-height:.9">390<span class="c-dim" style="font-size:72px"> / 500</span></div>
+      <p style="font-size:24px;line-height:1.35;margin:18px 0 0">компаний из Fortune 500 работают в <b class="c-yel">Higgsfield</b></p>
+      <p class="p2 c-dim" style="font-size:24px;margin:14px 0 0">TechCrunch · август 2026</p>
+    </div>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 3c КАЧЕСТВО + КОЛИЧЕСТВО -->
+<section class="slide" data-title="Качество + количество">
+  <div class="g stairs m" style="left:1800px;top:0"></div><div class="g q3 w" style="left:1680px;top:0"></div>
+  <div class="g dia cy" style="left:1680px;top:880px;width:240px;height:200px;opacity:.35"></div>
+  <div class="mark" style="right:auto;left:56px"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label mag in" style="position:absolute;left:150px;top:200px">что важно сейчас</span>
+  <div class="eq in" style="--d:1">
+    <div class="op"><span class="c-dim">не</span> качество</div>
+    <div class="op"><span class="c-dim">не</span> количество</div>
+  </div>
+  <h2 class="px in" style="--d:3;position:absolute;left:146px;top:400px;font-size:144px;line-height:1.05">качество<br><span class="c-mag">+</span> <span class="hl">количество</span></h2>
+  <p class="in" style="--d:5;position:absolute;left:150px;top:790px;width:900px;font-size:28px;line-height:1.4;margin:0">Бренды борются за внимание и выходят на экраны всё чаще. Чтобы тебя запомнили, нужен постоянный поток контента, и каждый ролик в нём должен держать уровень.</p>
+  <div class="in" style="--d:4;position:absolute;left:1400px;top:330px;width:420px">
+    <div class="feed"><i style="--h:40"></i><i style="--h:62"></i><i style="--h:48"></i><i style="--h:80"></i><i style="--h:56"></i><i style="--h:92"></i><i style="--h:70"></i><i style="--h:100"></i></div>
+    <div class="p2 c-dim" style="font-size:24px;margin-top:16px">роликов в ленте бренда →</div>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 05 РЕФЕРЕНСЫ -->
+<section class="slide" data-title="Референсы">
+  <div class="pix in" data-edge="bottom" data-cell="48" data-seed="21" style="left:0;top:0;width:1920px;height:640px"><img src="img/references.jpg" alt="Раскадровка референсов из клипа"></div>
+  <div class="g tl m" style="left:1680px;top:840px"></div><div class="g sq m" style="left:1800px;top:840px"></div><div class="g q3 w" style="left:1800px;top:960px"></div><div class="g chk m" style="left:1680px;top:960px"></div>
+  <h2 class="px in" style="--d:2;position:absolute;left:96px;top:760px;font-size:120px">где брать <span class="hl cyan">референсы</span></h2>
+  <p class="in" style="--d:4;position:absolute;left:100px;top:910px;margin:0;font-size:30px">и почему в них нет ничего плохого</p>
+</section>
+
+<!-- 04 HIGGSFIELD -->
+<section class="slide" data-title="Higgsfield">
+  <div class="g q4 y" style="left:0;top:960px"></div><div class="g sq w" style="left:120px;top:1020px;width:60px;height:60px"></div>
+  <div class="g chk y" style="left:1800px;top:0;opacity:.9"></div>
+  <div class="mark" style="right:180px"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label yel in" style="position:absolute;left:96px;top:96px">инструмент №1</span>
+  <h2 class="px in c-yel" style="--d:1;position:absolute;left:90px;top:150px;font-size:132px">Higgs-<br>field</h2>
+  <p class="in" style="--d:2;position:absolute;left:96px;top:445px;width:520px;font-size:24px;line-height:1.4;margin:0">Нейросеть, которая превращает текст и картинку в видео за секунды.</p>
+
+  <div class="tag yel in" style="--d:3;left:120px;top:590px;width:470px;padding:12px 20px"><span class="n" style="left:-30px;top:-30px">1</span><h3 style="font-size:36px">выбери движение</h3><p style="font-size:19px">пресет камеры: пролёт, наезд, облёт</p></div>
+  <div class="tag w in" style="--d:4;left:120px;top:735px;width:470px;padding:12px 20px"><span class="n" style="left:-30px;top:-30px">2</span><h3 style="font-size:36px">добавь кадр</h3><p style="font-size:19px">загрузи картинку или сгенерируй её</p></div>
+  <div class="tag cyan in" style="--d:5;left:120px;top:880px;width:470px;padding:12px 20px"><span class="n" style="left:-30px;top:-30px">3</span><h3 style="font-size:36px">получи видео</h3><p style="font-size:19px">жмёшь Generate — готово</p></div>
+
+  <div class="in" style="--d:3;position:absolute;left:700px;top:170px;width:1140px;border:4px solid var(--yel);background:#000">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--yel);color:var(--ink)">
+      <span style="width:16px;height:16px;background:var(--ink)"></span><span style="width:16px;height:16px;background:var(--ink)"></span><span style="width:16px;height:16px;background:var(--ink)"></span>
+      <span class="p2" style="font-size:24px;margin-left:12px;text-transform:none">higgsfield.ai/create/video</span>
+    </div>
+    <img src="img/higgsfield-ui.jpg" alt="Интерфейс Higgsfield: Image to Video" style="display:block;width:100%">
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 06 PIPELINE -->
+<section class="slide" data-title="Рабочий pipeline">
+  <div class="g flower m" style="left:0;top:0"></div><div class="g chev w" style="left:120px;top:0"></div>
+  <div class="g ring cy" style="left:1700px;top:860px;width:220px;height:220px;border-width:36px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:300px;top:90px">как мы это делаем</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:296px;top:140px;font-size:132px">рабочий <span class="c-cyan">pipeline</span></h2>
+
+  <div id="pipe" style="position:absolute;left:96px;top:430px;width:1728px;display:grid;grid-template-columns:1fr 70px 1fr 70px 1fr 70px 1fr;align-items:start">
+    <div class="in" style="--d:2"><div class="tile" style="position:relative;height:250px;border-color:var(--mag)"><img src="img/ref-thumb.jpg" alt="" style="transform:none"></div>
+      <div class="px c-mag" style="font-size:48px;margin-top:22px">1 референс</div><p style="font-size:21px;margin:10px 0 0;line-height:1.35">находим кадр, который хотим повторить</p></div>
+    <svg class="in arr" style="--d:3" viewBox="0 0 7 7"></svg>
+    <div class="in" style="--d:4"><div class="tile" style="position:relative;height:250px;border-color:var(--paper)"><img src="img/logos/chatgpt.png" alt="ChatGPT"></div>
+      <div class="px" style="font-size:48px;margin-top:22px">2 ChatGPT</div><p style="font-size:21px;margin:10px 0 0;line-height:1.35">разбирает кадр и пишет промпт</p></div>
+    <svg class="in arr" style="--d:5" viewBox="0 0 7 7"></svg>
+    <div class="in" style="--d:6"><div class="tile" style="position:relative;height:250px;border-color:var(--yel)"><img src="img/logos/higgsfield.png" alt="Higgsfield"></div>
+      <div class="px c-yel" style="font-size:48px;margin-top:22px">3 Higgsfield</div><p style="font-size:21px;margin:10px 0 0;line-height:1.35">генерирует картинку и видео</p></div>
+    <svg class="in arr" style="--d:7" viewBox="0 0 7 7"></svg>
+    <div class="in" style="--d:8"><div class="tile" style="position:relative;height:250px;border-color:var(--cyan)"><img src="img/logos/davinci.png" alt="DaVinci Resolve"></div>
+      <div class="px c-cyan" style="font-size:48px;margin-top:22px">4 DaVinci</div><p style="font-size:21px;margin:10px 0 0;line-height:1.35">монтаж, звук и цвет</p></div>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 07 СВОЙ ПРОМПТ -->
+<section class="slide" data-title="Свой промпт">
+  <div class="mark" style="right:auto;left:50%;transform:translateX(-50%);text-align:center"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <div class="tile in" style="left:90px;top:70px;width:220px;height:220px;transform:rotate(-6deg);border-color:var(--yel)"><img src="img/logos/higgsfield.png" alt="Higgsfield"></div>
+  <div class="tile in" style="--d:1;left:1510px;top:90px;width:250px;height:250px;transform:rotate(7deg);border-color:var(--cyan)"><img src="img/logos/model-swirl.png" alt="Видеомодель"></div>
+  <div class="tile in" style="--d:2;left:130px;top:720px;width:250px;height:250px;transform:rotate(8deg);border-color:var(--paper)"><img src="img/logos/model-cloud.png" alt="Видеомодель"></div>
+  <div class="tile in" style="--d:3;left:1530px;top:730px;width:250px;height:250px;transform:rotate(-5deg);border-color:var(--mag)"><img src="img/logos/model-r.png" alt="Видеомодель"></div>
+  <div class="g chk m" style="left:320px;top:250px;width:60px;height:60px"></div>
+  <div class="g q2 cy" style="left:1430px;top:660px;width:80px;height:80px"></div>
+  <h2 class="px in" style="--d:4;position:absolute;left:0;right:0;top:330px;text-align:center;font-size:144px;line-height:1.05">каждой модели<br>нужен <span class="hl">свой</span> промпт</h2>
+  <p class="in c-dim" style="--d:6;position:absolute;left:0;right:0;top:700px;text-align:center;font-size:24px;margin:0">один и тот же текст в разных нейросетях даёт разный результат</p>
+  <div class="num"></div>
+</section>
+
+<!-- 08 ПРОМПТ 50% -->
+<section class="slide" data-title="Промпт — 50%">
+  <div class="g tl cy" style="left:0;top:0"></div><div class="g sq k" style="left:120px;top:0"></div><div class="g q2 w" style="left:0;top:120px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <h2 class="px in" style="position:absolute;left:300px;top:70px;font-size:132px">промпт —</h2>
+  <div class="in" style="--d:2;position:absolute;left:1080px;top:76px;width:520px"><div class="bar cyan" style="height:116px"><small>доля результата</small><strong style="font-size:96px">50%</strong></div></div>
+
+  <div class="in" style="--d:3;position:absolute;left:150px;top:300px;width:1620px;border:4px solid var(--paper);background:#0f0e14">
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:4px solid var(--paper)">
+      <span style="width:18px;height:18px;background:var(--org)"></span><span style="width:18px;height:18px;background:var(--yel)"></span><span style="width:18px;height:18px;background:var(--cyan)"></span>
+      <span class="p2 c-dim" style="font-size:24px;margin-left:10px">prompt.txt</span>
+    </div>
+    <div style="padding:34px 40px 40px;font-size:34px;line-height:1.55">
+      <div class="p2 c-org" style="font-size:24px">✕ bad prompt</div>
+      <div style="display:flex;gap:28px;margin-top:10px"><span class="c-dim">1</span><span class="c-org">a car driving fast at night</span></div>
+      <div class="p2 c-cyan" style="font-size:24px;margin-top:38px">✓ good prompt</div>
+      <div style="display:flex;gap:28px;margin-top:10px"><span class="c-dim">1</span><span class="c-cyan">A sleek black sports car accelerates through a rain-soaked Tokyo street at midnight, neon reflections rippling on the wet asphalt, low camera angle, cinematic, motion blur, 4K</span></div>
+    </div>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 09 РАЗБОР ПРОМПТА -->
+<section class="slide" data-title="Разбор промпта">
+  <div class="g chev m" style="left:1770px;top:0;width:150px;height:150px"></div>
+  <div class="g stairs y" style="left:0;top:960px"></div><div class="g tr w" style="left:120px;top:960px"></div>
+  <span class="label mag in" style="position:absolute;left:150px;top:96px">разбор промпта</span>
+  <p class="in" style="--d:1;position:absolute;left:150px;top:200px;width:1620px;margin:0;font-family:var(--f-mono);font-weight:700;font-size:62px;line-height:1.32;text-wrap:pretty">
+    <span class="c-yel">A sleek black sports car accelerates through</span>
+    <span>a rain-soaked <span class="hl yel">Astana</span> street at midnight, neon reflections rippling on the wet asphalt,</span>
+    <span class="c-cyan">low camera angle, cinematic, motion blur, 4K</span>
+  </p>
+  <div class="tag yel in" style="--d:3;left:178px;top:790px;width:470px;padding:12px 20px"><span class="n" style="left:-30px;top:-30px">1</span><h3 style="font-size:48px">объект</h3><p style="font-size:19px">кто или что в кадре и что делает</p></div>
+  <div class="tag w in" style="--d:4;left:725px;top:790px;width:470px;padding:12px 20px"><span class="n" style="left:-30px;top:-30px">2</span><h3 style="font-size:48px">сцена</h3><p style="font-size:19px">место, время, свет, атмосфера</p></div>
+  <div class="tag cyan in" style="--d:5;left:1272px;top:790px;width:470px;padding:12px 20px"><span class="n" style="left:-30px;top:-30px">3</span><h3 style="font-size:48px">камера</h3><p style="font-size:19px">ракурс, стиль, движение, качество</p></div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 10 РЕЗУЛЬТАТ -->
+<section class="slide" data-title="Результат">
+  <div class="pix in" data-edge="bottom" data-cell="42" data-seed="31" style="left:60px;top:330px;width:880px;height:660px"><img src="img/car-1.jpg" alt="Сгенерированный кадр: спорткар на мокрой улице ночью"></div>
+  <div class="pix in" data-edge="right" data-cell="42" data-seed="32" style="--d:2;left:980px;top:90px;width:880px;height:660px"><img src="img/car-2.jpg" alt="Сгенерированный кадр: чёрная машина в дождь, низкий ракурс"></div>
+  <h2 class="px in" style="--d:3;position:absolute;left:60px;top:90px;font-size:120px">что<br><span class="c-cyan">вышло</span></h2>
+  <div class="in" style="--d:4;position:absolute;left:980px;top:800px;display:flex;gap:12px;flex-wrap:wrap;width:880px">
+    <span class="label yel">Astana</span><span class="label">midnight</span><span class="label">rain</span><span class="label cyan">low angle</span><span class="label cyan">motion blur</span>
+  </div>
+  <div class="g q3 m" style="left:1800px;top:960px"></div><div class="g tl m" style="left:1680px;top:960px"></div>
+  <div class="num" style="left:auto;right:56px;bottom:auto;top:44px"></div>
+</section>
+
+<!-- 11 ЗВУК -->
+<section class="slide" data-title="Звук — 50%">
+  <div class="g flower m" style="left:0;top:0"></div><div class="g chk w" style="left:120px;top:0;opacity:.3"></div>
+  <div class="g dia m" style="left:1640px;top:820px;width:280px;height:260px;opacity:.5"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <h2 class="px in" style="position:absolute;left:150px;top:200px;font-size:156px;line-height:1">звук —<br>половина<br><span class="c-mag">восприятия</span></h2>
+  <div class="in" style="--d:3;position:absolute;left:156px;top:800px;width:720px"><div class="bar mag"><small>вклад в ощущение от ролика</small><strong>50%</strong></div></div>
+  <div class="in" style="--d:2;position:absolute;left:1380px;top:250px;width:440px;height:440px;background:var(--paper);display:grid;place-items:center">
+    <svg id="mute" viewBox="0 0 16 12" width="320" height="240" style="image-rendering:pixelated" aria-label="Звук выключен"></svg>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 12 ПРОГРАММЫ ДЛЯ ЗВУКА -->
+<section class="slide" data-title="Программы для звука">
+  <div class="g tl cy" style="left:0;top:0"></div><div class="g chev w" style="left:120px;top:0"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="p2 c-dim in" style="position:absolute;left:300px;top:96px;font-size:24px">программы для звука</span>
+  <span class="label cyan in" style="--d:1;position:absolute;left:300px;top:150px">лайфхак</span>
+  <h2 class="px in" style="--d:2;position:absolute;left:296px;top:220px;font-size:108px;line-height:1">Epidemic Sound —<br>одна подписка<br><span class="c-cyan">закрывает всё</span></h2>
+  <div class="tile cap in" data-cap="музыка" style="--d:4;left:300px;top:660px;width:340px;height:300px;border-color:var(--yel)"><img src="img/logos/artlist.png" alt="Artlist"></div>
+  <div class="tile cap in" data-cap="голос" style="--d:5;left:690px;top:660px;width:560px;height:300px;border-color:var(--cyan)"><img src="img/logos/elevenlabs.png" alt="ElevenLabs"></div>
+  <div class="tile cap in" data-cap="песни" style="--d:6;left:1300px;top:660px;width:340px;height:300px;border-color:var(--org)"><img src="img/logos/suno.png" alt="Suno"></div>
+  <p class="in c-dim" style="--d:7;position:absolute;left:1690px;top:820px;width:190px;font-size:18px;line-height:1.4;margin:0">альтернативы, если нужно что-то конкретное</p>
+  <div class="num"></div>
+</section>
+
+<!-- 13 ЦВЕТОКОРРЕКЦИЯ -->
+<section class="slide" data-title="Цветокоррекция">
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <div class="g stairs o" style="left:0;top:0"></div><div class="g sq w" style="left:0;top:120px;width:60px;height:60px"></div>
+  <h2 class="px in" style="position:absolute;left:150px;top:90px;font-size:120px">цвето<span class="c-yel">коррекция</span></h2>
+  <div class="ba in" id="ba" style="--d:2;left:150px;top:260px;width:1620px;height:720px;border:4px solid var(--paper)">
+    <img src="img/cc-before.jpg" alt="До цветокоррекции: зелёный оттенок">
+    <img class="after" src="img/cc-after.jpg" alt="После цветокоррекции: естественная кожа">
+    <span class="label org lab" style="left:20px">до</span>
+    <span class="label cyan lab" style="right:20px">после</span>
+    <div class="knob"></div>
+    <input type="range" min="0" max="100" value="50" id="baRange" aria-label="Сравнение до и после">
+  </div>
+  <div class="num" style="left:auto;right:56px;bottom:30px"></div>
+</section>
+
+<!-- 14 ПРОГРАММЫ ДЛЯ ЦВЕТА -->
+<section class="slide" data-title="Программы для цвета">
+  <div class="g q2 y" style="left:0;top:0"></div><div class="g chk y" style="left:120px;top:0"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="p2 c-dim in" style="position:absolute;left:300px;top:96px;font-size:24px">программы для цвета</span>
+  <span class="label yel in" style="--d:1;position:absolute;left:300px;top:150px">лайфхак</span>
+  <h2 class="px in" style="--d:2;position:absolute;left:296px;top:220px;font-size:108px;line-height:1">DaVinci закрывает<br>почти все задачи</h2>
+  <div class="in" style="--d:3;position:absolute;left:300px;top:470px;width:1300px"><div class="bar yel"><small>задач по цвету и монтажу</small><strong>99%</strong></div></div>
+  <div class="tile cap in" data-cap="быстро, с телефона" style="--d:4;left:300px;top:640px;width:340px;height:320px;border-color:var(--paper)"><img src="img/logos/capcut.png" alt="CapCut"></div>
+  <div class="tile cap in" data-cap="основной" style="--d:5;left:690px;top:640px;width:560px;height:320px;border-color:var(--yel)"><img src="img/logos/davinci.png" alt="DaVinci Resolve"></div>
+  <div class="tile cap in" data-cap="альтернатива" style="--d:6;left:1300px;top:640px;width:340px;height:320px;border-color:var(--vio)"><img src="img/logos/premiere.png" alt="Adobe Premiere Pro"></div>
+  <div class="num"></div>
+</section>
+
+<!-- 18 КАК ЗАРАБАТЫВАЮТ -->
+<section class="slide" data-title="Как зарабатывают на ИИ">
+  <div class="g br y" style="left:1800px;top:960px"></div><div class="g chk y" style="left:1740px;top:1020px;width:60px;height:60px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <h2 class="px in" style="--d:1;position:absolute;left:96px;top:64px;font-size:84px">как зарабатывают на <span class="hl yel">ИИ</span></h2>
+  <div style="position:absolute;left:96px;top:196px;width:1728px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:48px">
+    <div class="earn-col in" style="--d:2">
+      <div class="client-h"><span class="label cyan">бизнесу</span><b class="c-cyan">11</b></div>
+      <ul class="earn cyan"><li><b>Карточки WB · Ozon · Kaspi</b><span>фото, инфографика, видеообложки</span></li><li><b>Рекламные ролики</b><span>для брендов и локального бизнеса</span></li><li><b>Креативы для таргета</b><span>десятки версий под A/B-тест</span></li><li><b>Контент-завод</b><span>поток Reels и TikTok по подписке</span></li><li><b>ИИ-аватары</b><span>цифровой ведущий, UGC без актёров</span></li><li><b>Fashion и предметка</b><span>модели и лукбуки без студии</span></li><li><b>Фуд-контент</b><span>меню и доставка без фотографа</span></li><li><b>Недвижимость</b><span>визуализация ЖК и интерьеров</span></li><li><b>Клипы</b><span>для музыкантов и артистов</span></li><li><b>Обучение и HR</b><span>курсы, онбординг, инструкции</span></li><li><b>Локализация</b><span>перевод и липсинк на другие языки</span></li></ul>
+    </div>
+    <div class="earn-col in" style="--d:3">
+      <div class="client-h"><span class="label mag">людям</span><b class="c-mag">8</b></div>
+      <ul class="earn mag"><li><b>Лав-стори</b><span>история пары, предложение, свадьба</span></li><li><b>Мультфильмы</b><span>ребёнок в главной роли</span></li><li><b>Оживление фото</b><span>старые семейные снимки</span></li><li><b>Именные поздравления</b><span>ролики на праздники</span></li><li><b>Постеры и принты</b><span>портреты, обложки, интерьер</span></li><li><b>Детские книги</b><span>иллюстрации и сказки на заказ</span></li><li><b>Аватарки и портреты</b><span>для соцсетей и резюме</span></li><li><b>Ролики-память</b><span>к юбилеям и в память о близких</span></li></ul>
+    </div>
+    <div class="earn-col in" style="--d:4">
+      <div class="client-h"><span class="label yel">неочевидное</span><b class="c-yel">10</b></div>
+      <ul class="earn yel"><li><b>Дропшиппинг</b><span>карточки и ролики без закупки товара</span></li><li><b>Бренд одежды</b><span>дизайн, лукбук на AI-моделях, тест спроса до пошива</span></li><li><b>Свой товар на маркетплейсе</b><span>упаковка, карточки, проверка спроса</span></li><li><b>AI-инфлюенсер</b><span>виртуальный блогер с рекламными интеграциями</span></li><li><b>Лидогенерация</b><span>свои креативы, продаёшь бизнесу заявки</span></li><li><b>Свой канал</b><span>мультсериал или faceless, доход с просмотров</span></li><li><b>Мерч</b><span>принты для одежды и сувениров</span></li><li><b>Превиз для продакшнов</b><span>ролик до съёмки вместо раскадровки</span></li><li><b>Внедрение в компаниях</b><span>пайплайн и обучение маркетинга</span></li><li><b>White-label для агентств</b><span>делаешь ты, продают они</span></li></ul>
+    </div>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- 19 АКАДЕМИЯ -->
+<section class="slide" data-title="AI Academy">
+  <div class="pix in" data-edge="left" data-cell="48" data-seed="41" style="left:1010px;top:0;width:910px;height:1080px"><img src="img/car-2.jpg" alt="AI-кадр: машина в дождь ночью" style="object-position:40% 50%"></div>
+  <div style="position:absolute;left:1010px;top:0;width:910px;height:1080px;background:linear-gradient(90deg,rgba(10,10,12,.55),rgba(10,10,12,0) 45%)"></div>
+  <div class="g tl m" style="left:0;top:0"></div><div class="g chk m" style="left:120px;top:0"></div><div class="g q2 w" style="left:0;top:120px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label mag in" style="position:absolute;left:150px;top:220px">METAFRAME AI ACADEMY</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:146px;top:276px;font-size:132px;line-height:1.02">от нуля<br>до <span class="c-mag">AI-</span><br>креатора</h2>
+  <div class="in" style="--d:3;position:absolute;left:150px;top:760px;display:flex;align-items:stretch;gap:0">
+    <div class="px" style="font-size:96px;background:var(--mag);color:var(--ink);padding:10px 22px 4px">6</div>
+    <div style="border:3px solid var(--mag);border-left:0;padding:14px 22px;display:flex;flex-direction:column;justify-content:center;gap:6px">
+      <b class="px" style="font-size:36px">недель</b><span style="font-size:20px;color:var(--dim)">6 модулей · 80% практики</span>
+    </div>
+  </div>
+  <p class="in" style="--d:4;position:absolute;left:600px;top:772px;width:360px;margin:0;font-size:22px;line-height:1.4">Готовое портфолио и шанс попасть в команду <b class="c-mag">MetaFrame</b></p>
+  <div class="num"></div>
+</section>
+
+<!-- ДЛЯ КОГО -->
+<section class="slide" data-title="Для кого">
+  <div class="g tl cy" style="left:0;top:0"></div><div class="g sq w" style="left:120px;top:0;width:60px;height:60px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <h2 class="px in" style="position:absolute;left:296px;top:96px;font-size:84px">этот курс для тебя, если</h2>
+  <div class="fit in" style="--d:2">
+    <div class="fit-col yes"><span class="label cyan">подходит</span><ul>
+      <li>хочешь новую профессию с нуля</li>
+      <li>у тебя бизнес, и ты хочешь делать контент сам</li>
+      <li>ты SMM, маркетолог или дизайнер и хочешь поднять чек</li>
+      <li>ты эксперт (юрист, архитектор, врач) и строишь личный бренд</li>
+      <li>хочешь работать на себя и брать заказы со всего мира</li>
+    </ul></div>
+    <div class="fit-col no"><span class="label org">не подходит</span><ul>
+      <li>ждёшь волшебную кнопку без практики</li>
+      <li>хочешь только теорию</li>
+      <li>не готов показывать работы и общаться с клиентами</li>
+    </ul></div>
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 20 ПРОГРАММА -->
+<section class="slide" data-title="Программа курса">
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:96px;top:70px">программа · 6 недель · 80% практики</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:92px;top:118px;font-size:96px">чему ты научишься</h2>
+  <div class="mods in" style="--d:2">
+    <div class="mod cyan"><div class="mod-h"><span class="label cyan">M01</span></div><h3>фундамент</h3><ul><li>управляешь промптом, а не угадываешь</li><li>понимаешь логику генерации</li><li>подбираешь инструмент под задачу</li></ul></div>
+    <div class="mod mag"><div class="mod-h"><span class="label mag">M02</span></div><h3>фото · промпты</h3><ul><li>фотосессии без студии и моделей</li><li>один персонаж в 50+ кадрах</li><li>карточки товаров уровня съёмки</li></ul></div>
+    <div class="mod yel"><div class="mod-h"><span class="label yel">M03</span></div><h3>видео · сценарий</h3><ul><li>сценарий под возможности нейросетей</li><li>сложные сцены с несколькими объектами</li><li>действие по секундам, результат предсказуем</li></ul></div>
+    <div class="mod org"><div class="mod-h"><span class="label org">M04</span></div><h3>саунд · SFX</h3><ul><li>музыка под настроение сцены</li><li>липсинк и клон голоса с эмоциями</li><li>убираешь «нейросетевой» звук</li></ul></div>
+    <div class="mod cyan"><div class="mod-h"><span class="label cyan">M05</span></div><h3>монтаж · колор</h3><ul><li>ролики разных моделей в одном стиле</li><li>киношный цвет</li><li>чистка артефактов и апскейл до 4K</li></ul></div>
+    <div class="mod mag"><div class="mod-h"><span class="label mag">M06</span></div><h3>портфолио · рынок</h3><ul><li>5 работ в разных нишах</li><li>воронка от первого сообщения до оплаты</li><li>скрипты и продающий лендинг</li></ul></div>
+  </div>
+  <p class="in c-dim" style="--d:4;position:absolute;left:96px;top:890px;margin:0;font-size:22px">Модули идут вперемешку с первого урока: практика с первого дня.</p>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 21 РЕЗУЛЬТАТ -->
+<section class="slide" data-title="Результат курса">
+  <div class="g stairs cy" style="left:0;top:960px"></div><div class="g sq w" style="left:120px;top:1020px;width:60px;height:60px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label cyan in" style="position:absolute;left:150px;top:96px">через 6 недель</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:146px;top:146px;font-size:108px">у тебя будет</h2>
+  <ul class="have in" style="--d:2">
+    <li><b>5 работ в портфолио</b><span class="chips"><span class="chip">e-commerce</span><span class="chip">рестораны</span><span class="chip">недвижимость</span><span class="chip">fashion</span><span class="chip">личный бренд</span></span></li>
+    <li><b>готовый оффер</b><span>скрипты для переписки с клиентом и продающий лендинг</span></li>
+    <li><b>своя воронка</b><span>от холодного сообщения до оплаты</span></li>
+    <li><b>цель — первый клиент</b><span>за 2 недели с готовым оффером и портфолио</span></li>
+  </ul>
+  <div class="prize in" style="--d:4">
+    <span class="label mag">главный приз</span>
+    <h3 class="px" style="font-size:72px;margin:22px 0 0">отбор в<br><span class="c-mag">MetaFrame</span></h3>
+    <p>Автор лучшего финального ролика получает оффер: оплачиваемая стажировка или проекты студии с реальными брендами.</p>
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 22 БОНУС: ВАЙБ-КОДИНГ -->
+<section class="slide" data-title="Бонус: вайб-кодинг">
+  <div class="g flower y" style="left:0;top:0"></div><div class="g chev w" style="left:120px;top:0"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label yel in" style="position:absolute;left:300px;top:96px">+ бонус к курсу</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:296px;top:146px;font-size:132px;line-height:1">вайб-<br><span class="c-yel">кодинг</span></h2>
+  <p class="in" style="--d:2;position:absolute;left:300px;top:450px;width:600px;margin:0;font-size:28px;line-height:1.4">Собираешь <b class="c-yel">анимированные сайты</b> и <b class="c-cyan">моушн-дизайн</b> вместе с ИИ. Без опыта программирования.</p>
+  <div class="in" style="--d:3;position:absolute;left:300px;top:640px;width:600px">
+    <div class="bar yel" style="height:96px"><small>за сайты и моушн платят</small><strong style="font-size:60px">ещё больше</strong></div>
+    <p class="c-dim" style="font-size:20px;line-height:1.4;margin:16px 0 0">Один клиент — ролик, сайт и анимация. Чек растёт, клиент остаётся с тобой.</p>
+  </div>
+  <div class="browser in" style="--d:4">
+    <div class="b-top"><i></i><i></i><i></i><span>твой-первый-сайт.kz</span></div>
+    <div class="b-body">
+      <div class="b-hero"><span class="b-t1"></span><span class="b-t2"></span><span class="b-btn"></span></div>
+      <div class="b-shapes"><i class="s1"></i><i class="s2"></i><i class="s3"></i><i class="s4"></i></div>
+      <div class="b-cards"><i></i><i></i><i></i></div>
+    </div>
+    <pre class="b-code"><span class="c-mag">&gt;</span> сделай лендинг для кофейни,
+  пиксельный стиль, анимация при скролле<span class="cursor">█</span></pre>
+  </div>
+  <div class="num"></div>
+</section>
+
+<!-- КЕЙСЫ -->
+<section class="slide" data-title="Кейсы учеников">
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label mag in" style="position:absolute;left:96px;top:70px">кейсы учеников</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:92px;top:118px;font-size:84px">люди как ты. <span class="c-mag">результаты</span></h2>
+  <div class="cases in" style="--d:2">
+    <div class="case cyan"><div class="case-top"><span class="ava">А</span><div><b>Асхат</b><small>38 лет · владелец бренда мерча NU</small></div></div><div class="case-res">без SMM</div><p>Отказался от SMM-специалиста и теперь сам продвигает бренд в соцсетях.</p></div>
+    <div class="case mag"><div class="case-top"><span class="ava">А</span><div><b>Алдияр</b><small>18 лет · студент</small></div></div><div class="case-res">1 750 000 ₸</div><p>Через 5 месяцев практики попал в Higgsfield с такой зарплатой.</p></div>
+    <div class="case yel"><div class="case-top"><span class="ava">Т</span><div><b>Тас</b><small>34 года · госструктура</small></div></div><div class="case-res">отчёты → анимация</div><p>Автоматизировал отчётность: теперь сдаёт её руководству анимированными презентациями.</p></div>
+    <div class="case org"><div class="case-top"><span class="ava">З</span><div><b>Залина</b><small>32 года · архитектор</small></div></div><div class="case-res">окупила на 2-й неделе</div><p>Сделала презентацию жилого городка и окупила обучение с первого заказчика.</p></div>
+    <div class="case cyan"><div class="case-top"><span class="ava">А</span><div><b>Айнур</b><small>41 год · юрист</small></div></div><div class="case-res">100к+ просмотров</div><p>Создала ИИ-аватара и контент-завод для личного бренда.</p></div>
+  </div>
+  <div class="in" style="--d:4;position:absolute;left:96px;top:940px;display:flex;align-items:center;gap:20px">
+    <span class="hl yel px" style="font-size:36px">первые продажи</span><span style="font-size:26px">— уже на 1-й неделе обучения</span>
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 23 ВОЗМОЖНОСТИ -->
+<section class="slide" data-title="Один навык">
+  <div class="g q3 m" style="left:1800px;top:960px"></div><div class="g tl m" style="left:1680px;top:960px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <h2 class="px in" style="position:absolute;left:150px;top:170px;font-size:120px;line-height:1.05">один навык.<br><span class="hl">30 способов</span><br>заработать</h2>
+  <p class="in" style="--d:2;position:absolute;left:150px;top:620px;width:900px;margin:0;font-size:30px;line-height:1.4">Профессия, которой три года назад не было. Сейчас за неё платят бренды, блогеры и обычные люди.</p>
+  <div class="in" style="--d:3;position:absolute;left:150px;top:820px;display:flex;align-items:center;gap:22px">
+    <span class="p2 c-dim" style="font-size:24px">первый шаг к</span>
+    <span class="px c-mag" style="font-size:72px">500 000 ₸/м</span>
+  </div>
+  <div class="ways in" style="--d:4"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="me"></i></div>
+  <div class="p2 c-dim in" style="--d:5;position:absolute;left:1300px;top:820px;font-size:24px"><span style="display:inline-block;width:18px;height:18px;background:var(--mag);margin-right:10px;vertical-align:-2px"></span>твоё место здесь</div>
+  <div class="num"></div>
+</section>
+
+<!-- ОКУПАЕМОСТЬ -->
+<section class="slide" data-title="Окупаемость">
+  <div class="g stairs y" style="left:1800px;top:0"></div><div class="g q3 w" style="left:1680px;top:0"></div>
+  <div class="mark" style="right:auto;left:56px"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label yel in" style="position:absolute;left:150px;top:190px">окупаемость</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:146px;top:240px;font-size:120px">курс окупается за</h2>
+  <div class="pay in" style="--d:2">
+    <div class="pay-opt"><div class="pay-blocks"><i></i><i></i><i></i><i></i><i></i></div><b class="px c-cyan">4–5 клиентов</b><span>на AI-видео</span></div>
+    <div class="pay-or px">или</div>
+    <div class="pay-opt"><div class="pay-site"><i></i><i></i><i></i></div><b class="px c-yel">1 клиент</b><span>на анимированный сайт</span></div>
+  </div>
+  <p class="in" style="--d:4;position:absolute;left:150px;top:900px;width:1500px;margin:0;font-size:26px;line-height:1.4">Залина окупила обучение <b class="c-yel">с первого заказчика на 2-й неделе</b>. Дальше всё, что зарабатываешь, — твоё.</p>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- ВОЗРАЖЕНИЯ -->
+<section class="slide" data-title="Возражения">
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:96px;top:70px">частые вопросы</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:92px;top:118px;font-size:96px">«а если у меня…»</h2>
+  <ul class="obj in" style="--d:2"><li><b>«у меня нет опыта»</b><span>Алдияру 18, он начинал с нуля. Курс стартует с фундамента, 80% — практика.</span></li><li><b>«нет времени»</b><span>Уроки в записи, 6 недель. Айнур — юрист, Тас — на госслужбе: учились параллельно с работой.</span></li><li><b>«ИИ всех заменит»</b><span>Он заменит тех, кто не умеет с ним работать. После курса ты умеешь.</span></li><li><b>«рынок перенасыщен»</b><span>78% брендов уже используют AI-контент, а делать его качественно умеют единицы.</span></li><li><b>«это дорого»</b><span>4–5 роликов или 1 анимированный сайт окупают курс. Рассрочка — от 33 334 ₸/мес.</span></li></ul>
+  <div class="guar in" style="--d:4">
+    <span class="label">гарантия</span>
+    <b class="px">не закрыл первого клиента за курс?</b>
+    <span>Продлеваем сопровождение бесплатно, пока не закроешь.</span>
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- 24 ПАКЕТЫ -->
+<section class="slide" data-title="Пакеты">
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:96px;top:70px">METAFRAME AI ACADEMY · старт 7 октября</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:92px;top:118px;font-size:96px">выбери свой формат</h2>
+  <div class="plans">
+    <div class="plan cyan in" style="--d:2">
+      <span class="label cyan">01</span>
+      <h3>записанные уроки</h3>
+      <div class="price">400 000<small>₸</small></div>
+      <div class="inst">или от 33 334 ₸/мес в рассрочку</div>
+      <ul><li>6 модулей в записи</li><li>учишься в своём темпе</li><li>бонус: вайб-кодинг и моушн</li></ul>
+    </div>
+    <div class="plan yel in" style="--d:3">
+      <span class="badge">выбирают чаще всего</span>
+      <span class="label yel">02</span>
+      <h3>офлайн / онлайн встречи</h3>
+      <div class="price">500 000<small>₸</small></div>
+      <div class="inst">или от 41 667 ₸/мес в рассрочку</div>
+      <ul><li>всё из пакета 01</li><li>живые встречи офлайн и онлайн</li><li>общение с командой и группой</li></ul>
+    </div>
+    <div class="plan mag hot in" style="--d:4">
+      <span class="label mag">03 · всего 3 места</span>
+      <h3>личное наставничество</h3>
+      <div class="price">1 500 000<small>₸</small></div>
+      <div class="inst">или от 125 000 ₸/мес в рассрочку</div>
+      <ul><li>всё из пакета 02</li><li>доступ к наставнику 24/7</li><li>зарабатываем вместе <b>от 300 000 ₸</b></li><li>выстраиваем все твои воронки</li></ul>
+    </div>
+  </div>
+  <p class="in c-dim" style="--d:5;position:absolute;left:96px;top:1000px;margin:0;font-size:20px">metaframe.ltd/ai-academy · предоплата 10 000 ₸ фиксирует место и цену</p>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- ПРЕДОПЛАТА -->
+<section class="slide" data-title="Предоплата">
+  <div style="position:absolute;left:0;top:0;width:820px;height:1080px;background:var(--mag)"></div>
+  <div class="g chk k" style="left:0;top:0"></div><div class="g q2 w" style="left:120px;top:0"></div><div class="g stairs k" style="left:0;top:960px"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:120px;top:200px;background:var(--ink);color:var(--mag)">забронируй место</span>
+  <div class="px in" style="--d:1;position:absolute;left:116px;top:270px;font-size:144px;line-height:1;color:var(--ink)">10 000<span style="font-size:.5em"> ₸</span></div>
+  <p class="in" style="--d:2;position:absolute;left:120px;top:500px;width:600px;margin:0;font-size:30px;line-height:1.4;color:var(--ink)">Предоплата <b>фиксирует место в группе и сегодняшнюю цену</b>. Остаток — до старта или в рассрочку.</p>
+  <div class="in" style="--d:3;position:absolute;left:120px;top:720px;display:flex;flex-direction:column;gap:14px;color:var(--ink)">
+    <div class="px" style="font-size:48px">старт: 7 октября, ср</div>
+    <div style="font-size:24px">наставничество — <b>всего 3 места</b></div>
+  </div>
+
+  <div class="in" style="--d:3;position:absolute;left:920px;top:220px;width:900px">
+    <div class="p2 c-dim" style="font-size:24px">предоплата и запись</div>
+    <div class="px" style="font-size:96px;margin-top:18px;white-space:nowrap">8 775 506 66 87</div>
+    <div class="px c-mag" style="font-size:60px;margin-top:14px">Татьяна С.</div>
+    <div class="steps">
+      <div><span class="n">1</span>Выбери пакет</div>
+      <div><span class="n">2</span>Переведи 10 000 ₸ по номеру</div>
+      <div><span class="n">3</span>Напиши Татьяне имя и пакет</div>
+    </div>
+  </div>
+  <div class="num" style="left:auto;right:56px"></div>
+</section>
+
+<!-- INSTAGRAM -->
+<section class="slide" data-title="Instagram">
+  <div class="g flower m" style="left:0;top:0"></div><div class="g chev w" style="left:120px;top:0"></div>
+  <div class="g dia cy" style="left:1680px;top:860px;width:240px;height:220px;opacity:.35"></div>
+  <div class="mark"><b>AI_CONTENT</b><i>МК · 03.10</i></div>
+  <span class="label in" style="position:absolute;left:300px;top:200px">ещё думаешь?</span>
+  <h2 class="px in" style="--d:1;position:absolute;left:296px;top:256px;font-size:96px;line-height:1.05">будь рядом,<br>пока решаешь</h2>
+  <p class="in" style="--d:2;position:absolute;left:300px;top:540px;width:700px;margin:0;font-size:30px;line-height:1.4">Кейсы, разборы генераций и новости AI-продакшна каждую неделю.</p>
+  <div class="px c-mag in" style="--d:3;position:absolute;left:300px;top:700px;font-size:84px">@metaframe_ai</div>
+  <div class="p2 c-dim in" style="--d:3;position:absolute;left:304px;top:810px;font-size:24px">instagram.com/metaframe_ai</div>
+  <div class="qr in" style="--d:4"><svg viewBox="-2 -2 33 33" width="100%" height="100%" shape-rendering="crispEdges" role="img" aria-label="QR-код на Instagram @metaframe_ai"><rect x="-2" y="-2" width="33" height="33" fill="#f4f2f7"/><rect x="0" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="0" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="1" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="2" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="3" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="4" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="5" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="6" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="7" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="7" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="7" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="7" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="7" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="8" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="9" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="10" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="11" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="12" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="13" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="14" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="15" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="16" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="17" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="18" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="19" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="7" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="20" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="21" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="22" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="17" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="23" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="24" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="25" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="12" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="27" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="26" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="9" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="11" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="13" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="16" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="18" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="22" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="23" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="26" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="28" y="27" width="1" height="1" fill="#0a0a0c"/><rect x="0" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="1" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="2" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="3" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="4" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="5" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="6" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="8" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="10" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="14" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="15" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="19" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="20" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="21" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="24" y="28" width="1" height="1" fill="#0a0a0c"/><rect x="25" y="28" width="1" height="1" fill="#0a0a0c"/></svg><span class="label mag">наведи камеру</span></div>
+  <div class="num"></div>
+</section>
+
+</main>
+
+<nav class="hud" aria-label="Навигация по слайдам">
+  <button id="prev" aria-label="Предыдущий слайд">◀</button>
+  <button id="count" aria-label="Номер слайда">01</button>
+  <button id="next" aria-label="Следующий слайд">▶</button>
+  <button id="fsBtn">полный экран [F]</button>
+</nav>
+
+<script>
+(function(){
+  const stage=document.getElementById('stage');
+  const slides=[...stage.querySelectorAll('.slide')];
+  const N=slides.length;
+  const prog=document.getElementById('progress');
+  slides.forEach(()=>prog.appendChild(document.createElement('span')));
+  const count=document.getElementById('count');
+  let cur=0;
+
+  function fit(){
+    const fs=document.body.classList.contains('fs');
+    const k=Math.min(innerWidth/1920,innerHeight/1080)*(fs?1:(innerWidth<700?0.96:0.9));
+    stage.style.setProperty('--k',k);
+  }
+  function go(i){
+    i=Math.max(0,Math.min(N-1,i));
+    slides[cur].classList.remove('on');
+    cur=i;
+    const s=slides[cur];
+    s.classList.add('on');
+    [...prog.children].forEach((p,j)=>{p.className=j<cur?'done':j===cur?'cur':''});
+    count.textContent=String(cur+1).padStart(2,'0')+' / '+N;
+    s.querySelectorAll('.pix').forEach(pixelate);
+    try{history.replaceState(null,'','#s'+(cur+1))}catch(e){}
+  }
+  slides.forEach((sl,j)=>{const n=sl.querySelector('.num');if(n)n.innerHTML='<b>'+String(j+1).padStart(2,'0')+'</b> / '+N});
+  addEventListener('resize',fit);
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT')return;
+    if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();go(cur+1)}
+    else if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();go(cur-1)}
+    else if(e.key==='Home')go(0);
+    else if(e.key==='End')go(N-1);
+    else if(e.key==='f'||e.key==='F'||e.key==='а'||e.key==='А')toggleFs();
+  });
+  document.getElementById('prev').onclick=()=>go(cur-1);
+  document.getElementById('next').onclick=()=>go(cur+1);
+  stage.addEventListener('click',e=>{
+    if(e.target.closest('.ba'))return;
+    const r=stage.getBoundingClientRect();
+    go(e.clientX<r.left+r.width*0.3?cur-1:cur+1);
+  });
+  // свайпы
+  let tx=null;
+  stage.addEventListener('touchstart',e=>{if(!e.target.closest('.ba'))tx=e.touches[0].clientX},{passive:true});
+  stage.addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>40)go(cur+(dx<0?1:-1));tx=null});
+
+  function toggleFs(){
+    const el=document.documentElement;
+    if(!document.fullscreenElement){(el.requestFullscreen?el.requestFullscreen():Promise.reject()).catch(()=>{document.body.classList.toggle('fs');fit()})}
+    else document.exitFullscreen();
+  }
+  document.getElementById('fsBtn').onclick=toggleFs;
+  document.addEventListener('fullscreenchange',()=>{document.body.classList.toggle('fs',!!document.fullscreenElement);fit()});
+
+  // ---------- пиксельное рассыпание фото ----------
+  const ACC=['#e35ee0','#3fe3e6','#e8d44c','#f0581f'];
+  function rnd(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+  function pixelate(el){
+    if(el.dataset.done)return;
+    const img=el.querySelector('img');
+    if(!img.complete||!img.naturalWidth){img.addEventListener('load',()=>pixelate(el),{once:true});return}
+    el.dataset.done=1;
+    const W=el.offsetWidth,H=el.offsetHeight,cell=+el.dataset.cell||48,edge=el.dataset.edge||'bottom';
+    const R=rnd(+el.dataset.seed||1);
+    const cols=Math.ceil(W/cell),rows=Math.ceil(H/cell);
+    const t=document.createElement('canvas');t.width=cols;t.height=rows;
+    const tc=t.getContext('2d');
+    const ir=img.naturalWidth/img.naturalHeight,br=W/H;let sx=0,sy=0,sw=img.naturalWidth,sh=img.naturalHeight;
+    if(ir>br){sw=sh*br;sx=(img.naturalWidth-sw)/2}else{sh=sw/br;sy=(img.naturalHeight-sh)/2}
+    tc.drawImage(img,sx,sy,sw,sh,0,0,cols,rows);
+    const M=3,c=document.createElement('canvas');
+    c.width=W+2*M*cell;c.height=H+2*M*cell;c.style.left=-M*cell+'px';c.style.top=-M*cell+'px';
+    const ctx=c.getContext('2d');ctx.imageSmoothingEnabled=false;
+    const K=4;
+    for(let j=-M;j<rows+M;j++)for(let i=-M;i<cols+M;i++){
+      let depth,along;
+      if(edge==='bottom'){depth=rows-1-j;along=i>=0&&i<cols}
+      else if(edge==='top'){depth=j;along=i>=0&&i<cols}
+      else if(edge==='right'){depth=cols-1-i;along=j>=0&&j<rows}
+      else {depth=i;along=j>=0&&j<rows}
+      if(!along||depth>=K)continue;
+      const p=depth>=0?0.85-depth/K*0.75:0.42+depth*0.13;
+      if(R()>p)continue;
+      const ci=Math.min(cols-1,Math.max(0,i)),cj=Math.min(rows-1,Math.max(0,j));
+      const x=(i+M)*cell,y=(j+M)*cell;
+      if(R()<0.07){ctx.fillStyle=ACC[Math.floor(R()*ACC.length)];ctx.fillRect(x,y,cell,cell)}
+      else{
+        // соседняя клетка изнутри — «сдвинутый» пиксель
+        const ox=depth<0?0:Math.round((R()-.5)*2),oy=depth<0?0:Math.round((R()-.5)*2);
+        ctx.drawImage(t,Math.min(cols-1,Math.max(0,ci+ox)),Math.min(rows-1,Math.max(0,cj+oy)),1,1,x,y,cell,cell);
+      }
+    }
+    el.appendChild(c);
+  }
+
+  // ---------- пиксельные стрелки и иконка ----------
+  const arrowRows=["...#...","...##..","#######","#######","#######","...##..","...#..."];
+  stage.querySelectorAll('svg.arr').forEach(s=>{
+    s.setAttribute('width',70);s.setAttribute('height',70);s.style.marginTop='90px';s.style.justifySelf='center';
+    s.innerHTML=arrowRows.map((r,y)=>[...r].map((ch,x)=>ch==='#'?`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="#f4f2f7"/>`:'').join('')).join('');
+  });
+  const MUTE=["................","......##........",".....###........","....####........","#######..#...#..","#######...#.#...","#######....#....","#######...#.#...","#######..#...#..","....####........",".....###........","......##........"];
+  document.getElementById('mute').innerHTML=MUTE.map((r,y)=>[...r].map((ch,x)=>ch==='#'?`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${x>8?'#e35ee0':'#0a0a0c'}"/>`:'').join('')).join('');
+
+  // ---------- до / после ----------
+  const ba=document.getElementById('ba'),rng=document.getElementById('baRange');
+  const setX=v=>ba.style.setProperty('--x',v+'%');
+  rng.addEventListener('input',()=>setX(rng.value));
+  ba.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='mouse'){const r=ba.getBoundingClientRect();const v=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100));setX(v);rng.value=v}});
+
+  // ---------- фон-рамка из пиксельных квадратов ----------
+  const bg=document.getElementById('bgpix');
+  function drawBg(){
+    const w=Math.ceil(innerWidth/22),h=Math.ceil(innerHeight/22);bg.width=w;bg.height=h;
+    const g=bg.getContext('2d'),r=rnd(5);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=r();if(v<0.16){g.fillStyle=`rgba(255,255,255,${0.04+r()*0.16})`;g.fillRect(x,y,1,1)}}
+  }
+  addEventListener('resize',drawBg);drawBg();
+
+  fit();
+  const m=/^#s(\d+)$/.exec(location.hash);
+  slides[0].classList.add('on');cur=0;
+  go(m?(+m[1]-1):0);
+})();
+</script>
+</body>
+</html>
